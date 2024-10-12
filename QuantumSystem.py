@@ -1,163 +1,79 @@
-from Eigenvector import Eigenstate
+import numpy as np
 import random
 import math
-from Complex_Num import Complex_Number
+from termcolor import colored, cprint
 
 class HSpace:
-    eigenVecs = []
+    eigenVec = []
 
-    def __init__(self, vecs):
-        self.eigenVecs = vecs
+    def __init__(self, _vecs):
+        self.eigenVec = _vecs
 
 class QSys:
-    basis_vectors= []
-    hspace = HSpace([])
+    amplitudes = np.array([])
+    hspace = HSpace({})
 
-    def __init__(self, stateList, space):
-        self.basis_vectors = stateList
-        self.hspace = space
-
-        #adding Unadded Components
-        for i in self.hspace.eigenVecs:
-            added = False
-            for j in self.basis_vectors:
-                if j.symbol == i:
-                    added = True
-                    break
-
-            if added == False:
-                self.basis_vectors.append(Eigenstate(0,0,i))
-
-        #sorting
-        for i in range(len(self.hspace.eigenVecs)):
-            for j in range(len(self.basis_vectors)):
-                if self.basis_vectors[j].symbol == self.hspace.eigenVecs[i]:
-                    temp = self.basis_vectors[i]
-                    self.basis_vectors[i] = self.basis_vectors[j]
-                    self.basis_vectors[j] = temp
-                    break
+    def __init__(self, _space, amps):
+        self.hspace = _space
+        self.amplitudes = amps
 
     def printState(self):
-        for i in self.basis_vectors:
-            print(f"({i.comp_num.toString()})|{i.symbol}> + ", end='')
-        print(' ')
+        for i in range(len(self.hspace.eigenVec)):
+            print(f"({self.amplitudes[i]})|{self.hspace.eigenVec[i]}> +", end=' ')
 
     def collapse(self):
         _weights = []
 
-        for i in self.basis_vectors:
-            _weights.append(i.comp_num.amplitude())
-            #print(i.comp_num.toString())
-            #print(i.comp_num.amplitude())
-
-        outcome = random.choices(self.basis_vectors, weights=_weights, k=1)
-        return outcome[0].symbol
+        for i in self.amplitudes:
+            prob = i[0]*np.conjugate(i[0])
+            _weights.append(prob.real)
+        
+        outcome = random.choices(self.hspace.eigenVec, weights=_weights, k=1)[0]
+        return outcome
     
-    def collapseSave(self):
+    def collapsePermanent(self):
         _weights = []
 
-        for i in self.basis_vectors:
-            _weights.append(i.comp_num.amplitude())
-            #print(i.comp_num.toString())
-            #print(i.comp_num.amplitude())
+        for i in self.amplitudes:
+            prob = i[0]*np.conjugate(i[0])
+            _weights.append(prob.real)
+        
+        outcome = random.choices(self.hspace.eigenVec, weights=_weights, k=1)[0]
 
-        outcome = random.choices(self.basis_vectors, weights=_weights, k=1)[0]
-
-        for i in self.basis_vectors:
-            if i.symbol == outcome.symbol:
-                i.comp_num = Complex_Number(1,0)
+        for i in range(len(self.hspace.eigenVec)):
+            if self.hspace.eigenVec[i] == outcome:
+                self.amplitudes[i][0] = 1 + 0j
             else:
-                i.comp_num = Complex_Number(0,0)
+                self.amplitudes[i][0] = 0 + 0j
 
-        return outcome.symbol
+        return outcome
     
     def normalize(self):
         amp = 0
 
-        for i in self.basis_vectors:
-            amp += (i.comp_num.amplitude())*(i.comp_num.amplitude())
+        for i in self.amplitudes:
+            sq = i[0]*np.conjugate(i[0])
+            amp += sq
 
-        amp = math.sqrt(amp)
+        amp = math.sqrt(amp.real)
 
-        for i in self.basis_vectors:
-            i.comp_num = i.comp_num*(Complex_Number(1/amp, 0))
-
-    def amp(self):
-        amp = 0
-
-        for i in self.basis_vectors:
-            amp += (i.comp_num.amplitude())*(i.comp_num.amplitude())
+        self.amplitudes = self.amplitudes/amp
 
     def bra(self):
-        conjugate_basis = []
+        braMat = np.transpose(self.amplitudes)
 
-        for i in self.basis_vectors:
-            braVec = Eigenstate.fromCompNum(i.comp_num.conjugate(), i.symbol)
-            conjugate_basis.append(braVec)
+        for i in range(len(braMat[0])):
+            braMat[0][i] = np.conjugate(braMat[0][i])
 
-        braRes = QSys(conjugate_basis, self.hspace)
-        return braRes
+        return braMat
     
     def __mul__(self, other):
-        braVec = other.bra()
-        res = Complex_Number(0,0)
-
-        for i in self.basis_vectors:
-            for j in braVec.basis_vectors:
-                if i.symbol == j.symbol:
-                    prod = i.comp_num*j.comp_num
-                    #prod.printValue()
-                    res = res + prod
-
-        return res
+        bra = other.bra()
+        res = np.matmul(bra,self.amplitudes)
+        return res[0][0]
     
-    def prob(self, _symbol):
-        probability = 0
-        for i in self.basis_vectors:
-            if i.symbol == _symbol:
-                probability = i.comp_num.amplitude()*i.comp_num.amplitude()
+    def exp(self, operator):
+        res = np.matmul(operator, self.amplitudes)
+        res = np.matmul(self.bra(), res)
 
-        return probability
-    
-    def getComponent(self, vec):
-        sys = QSys([Eigenstate.fromCompNum(Complex_Number(1,0), vec)], self.hspace)
-        prod = self * sys
-        return prod
-    
-    def nullVec(self):
-        res = []
-        for i in self.basis_vectors:
-            if i.comp_num == Complex_Number(0,0):
-                res.append(i.symbol)
-
-        return res
-    
-
-
-class QOperator:
-    matrix = [ [] ]
-    hspace = HSpace([])
-
-    def __init__(self, _mat, space):
-        self.matrix = _mat
-        self.hspace = space
-    
-    def __mul__(self, vec):
-        vecs = []
-
-        for i in self.matrix:
-            sum = Complex_Number(0,0)
-            for j in i:
-                prod = j * vec.basis_vectors[i.index(j)].comp_num
-                sum = sum + prod
-            vecs.append(Eigenstate.fromCompNum(sum, self.hspace.eigenVecs[self.matrix.index(i)]))
-        
-        resSys = QSys(vecs, self.hspace)
-        return resSys
-    
-    def expectedValue(self, sys):
-        vec = self * sys
-        res = sys * vec
-        return res
-
-
+        return res[0][0].real
