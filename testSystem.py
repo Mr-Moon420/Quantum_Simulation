@@ -13,4 +13,4 @@ spinSys = QSys(HiblSpace, np.array([
 spinZ = np.array([[1,0],
                   [0,-1]])
 
-print(spinSys.exp(spinZ))
+spinSys.collapsePermanent()

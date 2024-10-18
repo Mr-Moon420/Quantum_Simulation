@@ -17,9 +17,13 @@ class QSys:
         self.hspace = _space
         self.amplitudes = amps
 
-    def printState(self):
+    def printState(self, showNull=False):
         for i in range(len(self.hspace.eigenVec)):
-            print(f"({self.amplitudes[i]})|{self.hspace.eigenVec[i]}> +", end=' ')
+            if self.amplitudes[i] == 0 and showNull == True:
+                print(f"({self.amplitudes[i][0]})|{self.hspace.eigenVec[i]}> +", end=' ')
+            elif self.amplitudes[i] != 0:
+                print(f"({self.amplitudes[i][0]})|{self.hspace.eigenVec[i]}> +", end=' ')
+        print(" ")
 
     def collapse(self):
         _weights = []
@@ -42,9 +46,9 @@ class QSys:
 
         for i in range(len(self.hspace.eigenVec)):
             if self.hspace.eigenVec[i] == outcome:
-                self.amplitudes[i][0] = 1 + 0j
+                self.amplitudes[i][0] = 1
             else:
-                self.amplitudes[i][0] = 0 + 0j
+                self.amplitudes[i][0] = 0
 
         return outcome
     
